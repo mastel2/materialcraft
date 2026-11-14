@@ -309,17 +309,22 @@ fn thai_font() -> Option<std::sync::Arc<egui::FontData>> {
         static FOUND: std::sync::OnceLock<Option<std::sync::Arc<egui::FontData>>> = std::sync::OnceLock::new();
         FOUND
             .get_or_init(|| {
-                let candidates: &[&str] = if cfg!(target_os = "macos") {
-                    &["/System/Library/Fonts/Supplemental/Thonburi.ttc", "/System/Library/Fonts/Thonburi.ttc"]
+                let candidates: Vec<std::path::PathBuf> = if cfg!(target_os = "macos") {
+                    ["/System/Library/Fonts/Supplemental/Thonburi.ttc", "/System/Library/Fonts/Thonburi.ttc"].map(Into::into).to_vec()
                 } else if cfg!(windows) {
-                    &["C:\\Windows\\Fonts\\LeelawUI.ttf", "C:\\Windows\\Fonts\\leelawad.ttf", "C:\\Windows\\Fonts\\tahoma.ttf"]
+                    // WINDIR rather than a hard-coded C:\Windows: Windows may be installed on another drive.
+                    let windir = std::env::var_os("WINDIR").unwrap_or_else(|| "C:\\Windows".into());
+                    let fonts = std::path::PathBuf::from(windir).join("Fonts");
+                    ["LeelawUI.ttf", "leelawad.ttf", "tahoma.ttf"].iter().map(|f| fonts.join(f)).collect()
                 } else {
-                    &[
+                    [
                         "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf",
                         "/usr/share/fonts/noto/NotoSansThai-Regular.ttf",
                         "/usr/share/fonts/google-noto/NotoSansThai-Regular.ttf",
                         "/usr/share/fonts/truetype/tlwg/Loma.ttf",
                     ]
+                    .map(Into::into)
+                    .to_vec()
                 };
                 candidates.iter().find_map(|p| {
                     let meta = std::fs::metadata(p).ok()?;
